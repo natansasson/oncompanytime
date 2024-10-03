@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ON COMPANY TIME</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: lightblue;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            width: 50%;
+            padding: 20px;
+        }
+        .left {
+            text-align: center;
+        }
+        .right {
+            padding-left: 20px;
+            border-left: 2px solid black;
+        }
+        input, select, button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+            width: 80%;
+        }
+        h1 {
+            text-align: center;
+            width: 100%;
+        }
+        #leaderboard {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container left">
+        <h1>ON COMPANY TIME</h1>
+        <label for="name">Enter your 3-letter name (arcade-style): </label>
+        <input type="text" id="name" maxlength="3" style="text-transform: uppercase;" placeholder="ABC">
+        <br>
+
+        <label for="salary">Enter annual gross salary (AUD): </label>
+        <input type="number" id="salary" placeholder="Your salary in AUD">
+        <br>
+
+        <label for="partnerSalary">Enter partner's gross annual salary (AUD, optional): </label>
+        <input type="number" id="partnerSalary" placeholder="Partner's salary in AUD">
+        <br>
+
+        <label for="activity">Select activity: </label>
+        <select id="activity">
+            <option value="sex">Sex</option>
+            <option value="poo">Poo</option>
+            <option value="games">Games</option>
+            <option value="exercise">Exercise</option>
+        </select>
+        <br>
+
+        <button onclick="startActivity()">Start Activity</button>
+        <button onclick="stopActivity()">Stop Activity</button>
+
+        <p id="output"></p>
+    </div>
+
+    <div class="container right">
+        <h2>Total Earned on Company Time</h2>
+        <p id="totalEarnings">$0.00</p>
+
+        <h3>Leader Board</h3>
+        <div id="leaderboard">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Earned (AUD)</th>
+                        <th>Activity</th>
+                        <th>Duration (hrs)</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let startTime, timerInterval, totalEarnings = 0, activities = [];
+
+        // Load data from localStorage on page load
+        window.onload = function() {
+            loadStoredData();
+        };
+
+        function startActivity() {
+            let name = document.getElementById("name").value.toUpperCase();
+            if (name.length !== 3) {
+                alert("Please enter a valid 3-letter name.");
+                return;
+            }
+
+            let salary = parseFloat(document.getElementById("salary").value);
+            if (isNaN(salary)) {
+                alert("Please enter your annual salary.");
+                return;
+            }
+
+            startTime = new Date();
+            document.getElementById("output").textContent = "Activity started... Press stop when done.";
+            timerInterval = setInterval(updateEarnings, 1000); // Update earnings every second
+        }
+
+        function stopActivity() {
+            if (!startTime) {
+                alert("Please press start before stopping.");
+                return;
+            }
+
+            clearInterval(timerInterval);
+            calculateFinalEarnings();
+        }
+
+        function updateEarnings() {
+            let currentTime = new Date();
+            let timeSpent = (currentTime - startTime) / 1000 / 60 / 60; // time in hours
+
+            let salary = parseFloat(document.getElementById("salary").value);
+            let hourlyRate = salary / (40 * 52); // Assuming 40-hour work week and 52 weeks a year
+            let activity = document.getElementById("activity").value;
+
+            let partnerSalary = parseFloat(document.getElementById("partnerSalary").value);
+            if (activity === "sex" && !isNaN(partnerSalary)) {
+                hourlyRate += partnerSalary / (40 * 52); // Add partner's hourly rate for sex activity
+            }
+
+            let earnings = timeSpent * hourlyRate;
+            document.getElementById("output").textContent = 
+                `Earnings so far: $${earnings.toFixed(2)} AUD`;
+        }
+
+        function calculateFinalEarnings() {
+            let stopTime = new Date();
+            let timeSpent = (stopTime - startTime) / 1000 / 60 / 60; // time in hours
+
+            let salary = parseFloat(document.getElementById("salary").value);
+            let hourlyRate = salary / (40 * 52); // Assuming 40-hour work week and 52 weeks a year
+            let activity = document.getElementById("activity").value;
+
+            let partnerSalary = parseFloat(document.getElementById("partnerSalary").value);
+            if (activity === "sex" && !isNaN(partnerSalary)) {
+                hourlyRate += partnerSalary / (40 * 52); // Add partner's hourly rate for sex activity
+            }
+
+            let earnings = timeSpent * hourlyRate;
+            totalEarnings += earnings;
+            document.getElementById("totalEarnings").textContent = `$${totalEarnings.toFixed(2)}`;
+
+            // Add to the leaderboard
+            addActivityToLeaderboard(earnings, activity, timeSpent, stopTime);
+
+            // Save total earnings and activities to localStorage
+            saveData();
+        }
+
+        function addActivityToLeaderboard(earnings, activity, timeSpent, date) {
+            let activityRecord = {
+                earned: earnings.toFixed(2),
+                activity: activity,
+                duration: timeSpent.toFixed(2),
+                date: date.toLocaleString()
+            };
+
+            activities.push(activityRecord);
+            activities.sort((a, b) => b.earned - a.earned); // Sort by earnings descending
+
+            // Display top 20 activities
+            let leaderboardBody = document.getElementById("leaderboardBody");
+            leaderboardBody.innerHTML = ""; // Clear current leaderboard
+
+            activities.slice(0, 20).forEach(record => {
+                let row = `
+                    <tr>
+                        <td>$${record.earned}</td>
+                        <td>${record.activity}</td>
+                        <td>${record.duration} hrs</td>
+                        <td>${record.date}</td>
+                    </tr>
+                `;
+                leaderboardBody.innerHTML += row;
+            });
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem("totalEarnings", totalEarnings.toFixed(2));
+            localStorage.setItem("activities", JSON.stringify(activities));
+        }
+
+        // Load data from localStorage
+        function loadStoredData() {
+            let storedEarnings = localStorage.getItem("totalEarnings");
+            let storedActivities = localStorage.getItem("activities");
+
+            if (storedEarnings) {
+                totalEarnings = parseFloat(storedEarnings);
+                document.getElementById("totalEarnings").textContent = `$${totalEarnings.toFixed(2)}`;
+            }
+
+            if (storedActivities) {
+                activities = JSON.parse(storedActivities);
+                // Populate leaderboard with stored activities
+                activities.sort((a, b) => b.earned - a.earned); // Sort by earnings descending
+
+                let leaderboardBody = document.getElementById("leaderboardBody");
+                leaderboardBody.innerHTML = ""; // Clear current leaderboard
+
+                activities.slice(0, 20).forEach(record => {
+                    let row = `
+                        <tr>
+                            <td>$${record.earned}</td>
+                            <td>${record.activity}</td>
+                            <td>${record.duration} hrs</td>
+                            <td>${record.date}</td>
+                        </tr>
+                    `;
+                    leaderboardBody.innerHTML += row;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
